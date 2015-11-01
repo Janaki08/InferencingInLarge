@@ -2,7 +2,7 @@ import CSVRead
 import sparqlQuerypy
 import Neo4jDrive
 import random
-from threading import Thread
+from threading import Thread, Lock
 nameOfFile="agmarkrice2001modified.csv"
 hypothesisSet=[]
 stype=[]
@@ -11,8 +11,11 @@ def main():
     columnNames=CSVRead.readCSV(nameOfFile,firstRow=True, choice=[0,1,2,3,4])
     csvitems=CSVRead.readCSV(nameOfFile,firstRow=False, choice=[0,1,2,3,4])
     size=len(csvitems)
-    indices=[0:range(size)-1]
+    indices=range(size)
     random.shuffle(indices)
+
+    hyplock=Lock()
+    stypelock=Lock()
     for name in columnNames:
         Neo4jDrive.insertNodeAndRelationship(nameOfFile,"Column",name)
     
@@ -33,9 +36,9 @@ def main():
                     k=dmsThread(item[column],perm_column,size)
                     k.start()
                     k.join()
-        k=topDownThread(columnNames(column))
-            k.start()
-            k.join()
+        k=topDownThread(columnNames(column),hyplock,stypelock)
+        k.start()
+        k.join()
         
             
 class ccThread(Thread):
@@ -77,9 +80,11 @@ class ccThread(Thread):
 
 class dmsThread(Thread):
     def __init__(self,label1,label2,size):
+        Thread.__init__(self)
         self.label1=label1
         self.label2=label2
         self.size=size
+
 
 
     def run(self):
@@ -99,9 +104,11 @@ class dmsThread(Thread):
             rel.push()
 
 class topDownThread(Thread):
-    def __init__(self, item1,column):
+    def __init__(self, item1, hyplock, stypelock):
+        Thread.__init__(self)
         self.a=item1
-        self.column
+        self.hyplock=hyplock
+        self.stypelock=stypelock
    
     def run(self):
         objtypes=[]
@@ -118,17 +125,17 @@ class topDownThread(Thread):
                     break
             if flag:
                 if r[3]!=None:
-                    self.lock.acquire()
+                    #self.hyplock.acquire()
                     hypothesisSet+=[r[3]]
-                    self.lock.release()
+                    #self.hyplock.release()
                 else:
                     rlist1=sparqlQuerypy.findPropertyClassesSecond(self.a)
                     for rl in rlist1:
                         node1=Neo4jDrive.findNodeByName(rl[3])
                         if node1 != None:
-                            self.lock.acquire()
+                            #self.stype.acquire()
                             stype+=[[r[1],r[3]]]
-                            self.lock.release()
+                            #self.stype.release()
             else:
                 rlist1=sparqlQuerypy.findPropertyClassesSecond(name1)        
                 

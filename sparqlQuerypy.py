@@ -46,6 +46,7 @@ SELECT DISTINCT ?s ?p ?o ?d ?r WHERE{
 ?s ?p ?o.
 OPTIONAL{?p rdfs:domain ?d}.
 OPTIONAL{?p rdfs:range ?r}
+}
 """
 
 query5="""
@@ -55,6 +56,7 @@ SELECT DISTINCT ?s ?p ?o ?d ?r WHERE{
 ?s ?p ?o.
 OPTIONAL{?p rdfs:domain ?d}.
 OPTIONAL{?p rdfs:range ?r}
+}
 """
 query6="""
 SELECT DISTINCT ?s ?p ?o ?d ?r WHERE{
@@ -63,6 +65,7 @@ SELECT DISTINCT ?s ?p ?o ?d ?r WHERE{
 ?s ?p ?o.
 ?s rdf:type ?d. 
 ?o rdf:type ?r}
+}
 """
 
 
