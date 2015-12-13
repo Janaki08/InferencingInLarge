@@ -39,9 +39,9 @@ SELECT DISTINCT ?s ?l ?d WHERE{
 
 query4="""
 SELECT DISTINCT ?s ?p ?o ?d ?r WHERE{
-?s rdfs:label ?l. ?l bif:contains "'%(name1)s'" . FILTER regex(?l,"^%(name1)s$" ,"i") . FILTER
+?s rdfs:label ?l. ?l bif:contains "'%(name1)s'" . FILTER regex(?l,"%(name1)s" ,"i") . FILTER
 (langMatches(lang(?l), "en")).
-?o rdfs:label ?l1. ?l1 bif:contains "'%(name2)s'" . FILTER regex(?l1,"^%(name2)s$" ,"i") . FILTER
+?o rdfs:label ?l1. ?l1 bif:contains "'%(name2)s'" . FILTER regex(?l1,"%(name2)s" ,"i") . FILTER
 (langMatches(lang(?l1), "en")).
 ?s ?p ?o.
 OPTIONAL{?p rdfs:domain ?d}.
@@ -97,17 +97,17 @@ def runSparql(queryAppend,dictionary):
     endpoint.setReturnFormat(JSON)
     results=endpoint.query().convert()
     rlist=[]
-    
     for res in results["results"]["bindings"] :
         row=[]
         for k in dictionary.keys():
-	    row.append(res[k][dictionary[k]])
+            if k in res.keys():
+	        row.append(res[k][dictionary[k]])
         rlist.append(row)
     return rlist
 
 
 
 if __name__=='__main__':
-    rlist=findBottomUp('Comic')
+    rlist=findProperty('page','book')
     for r in rlist:
         print r

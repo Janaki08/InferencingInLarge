@@ -3,13 +3,16 @@ import sparqlQuerypy
 import Neo4jDrive
 import random
 from threading import Thread, Lock
-nameOfFile="agmarkrice2001modified.csv"
+nameOfFile="RiversandSourceState.csv"
 hypothesisSet=[]
 stype=[]
+
 def main():
+    cache=[]
     Neo4jDrive.insertNode(nameOfFile)
-    columnNames=CSVRead.readCSV(nameOfFile,firstRow=True, choice=[0,1,2,3,4])
-    csvitems=CSVRead.readCSV(nameOfFile,firstRow=False, choice=[0,1,2,3,4])
+    columnNames=CSVRead.readCSV(nameOfFile,firstRow=True, choice=[0,1])
+    columnNames=[c.strip() for c in columnNames]
+    csvitems=CSVRead.readCSV(nameOfFile,firstRow=False, choice=[0,1])
     size=len(csvitems)
     indices=range(size)
     random.shuffle(indices)
@@ -26,24 +29,32 @@ def main():
         support=CSVRead.getSupport(nameOfFile,column)
         totalNumberOfValues=CSVRead.numberOfItems(support)
      
-         
-        for item in csvitems:
+        count=0
+        for index in range(size):
+            #if item[column] in cache:
+                #continue
+            #else:
+                #cache+=[item[column]]
+              #  print cache
+            item=csvitems[indices[index]]
+            print "column is", column
             k=ccThread(item[column],columnNames,column,support,size)
             k.start()
             k.join()
             for perm_column in range(sum([1 for _ in Neo4jDrive.findRelationshipsOfNode(nameOfFile,"Column")])):
                 if perm_column!=column:
-                    k=dmsThread(item[column],perm_column,size)
+                    k=dmsThread(item[column],item[perm_column],size,columnNames,column,perm_column)
                     k.start()
                     k.join()
-        k=topDownThread(columnNames(column),hyplock,stypelock)
-        k.start()
-        k.join()
+        #k=topDownThread(columnNames(column),hyplock,stypelock)
+        #k.start()
+        #k.join()
         
-            
+    
 class ccThread(Thread):
     def __init__(self,item,columnNames,column,support,totalNumberOfValues):
         Thread.__init__(self)
+        print item
         self.item=item
         self.columnNames=columnNames
         self.column=column
@@ -58,9 +69,11 @@ class ccThread(Thread):
         column=self.column
         columnNames=self.columnNames
         item=self.item
-        rlist=sparqlQuerypy.findBottomUp(item)
+        rlist=sparqlQuerypy.findBottomUp(item.strip())
+
+        print 'size is', len(rlist)
         for r in rlist:
-          
+            print 'column node',Neo4jDrive.findNodeByName(columnNames[column])
             rel_data=Neo4jDrive.insertNodeAndRelationship(columnNames[column],"cc",r[2])       
             node=Neo4jDrive.findNodeByName(r[2])
             if node.properties['incoming']==None:
@@ -79,28 +92,38 @@ class ccThread(Thread):
             rel_data.push()
 
 class dmsThread(Thread):
-    def __init__(self,label1,label2,size):
+    def __init__(self,label1,label2,size,columnNames,column,perm_column):
         Thread.__init__(self)
-        self.label1=label1
-        self.label2=label2
+        self.label1=label1.strip()
+        self.label2=label2.strip()
         self.size=size
+        self.columnNames=columnNames
+        self.column=column
+	self.perm_column=perm_column
 
 
 
     def run(self):
         rlist=sparqlQuerypy.findProperty(self.label1,self.label2)
+        print self.label1,self.label2#,rlist
+        print '------------------'
         for r in rlist:
-            rel_data=Neo4jDrive.insertNodeAndRelationship(columnNames[column],"property",r[1])
+            rel_data=Neo4jDrive.insertNodeAndRelationship(self.columnNames[self.column],"property",r[1])
+            node=Neo4jDrive.findNodeByName(r[1])
             if node.properties['incoming']==None:
                 node.properties['incoming']=1
                 node.properties['dms']=0
             else:
                 node.properties['incoming']+=1
-                node.properties['dms']=node.properties['incoming']/this.size*1.0
+                node.properties['dms']=node.properties['incoming']/self.size*1.0
             node.properties['type']='property'
             node.push()
-            rel=Neo4jDrive.insertRelationship(label1,r[1],label2)
+            #Neo4jDrive.insertNode(self.label1)
+            #Neo4jDrive.insertNode(self.label2)
+            rel=Neo4jDrive.insertRelationship(self.columnNames[self.column],r[1],self.columnNames[self.perm_column])[0]
+            
             rel.properties['type']='property_rel'
+            rel.properties['name']=r[1]
             rel.push()
 
 class topDownThread(Thread):

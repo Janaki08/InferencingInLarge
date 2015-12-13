@@ -37,5 +37,5 @@ def numberOfItems(dictionary):
     
 
 if __name__=='__main__':
-    nameOfFile="agmarkrice2001modified.csv"
+    nameOfFile="RiversandSourceState.csv"
     print readCSV(nameOfFile)
