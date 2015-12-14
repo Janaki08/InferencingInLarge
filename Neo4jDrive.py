@@ -30,9 +30,11 @@ def findRelationByName(node1, name, node2):
     return graph.cypher.execute("match (m)-[n]-(o) where m.name=\"%(m)s\" and o.name=\"%(o)s\" and n.rel_class=\"%(name)s\" return m,n,o"%{'m':node1,'o':node2,'name':name})
 
 def findCCNodes(name):
-    return graph.cypher.execute("match (col)-[r]-(n) where col.name=\"%(name)s\" and n.type=\"cc\" return n"%{'name':name}) #test this
+    z=graph.cypher.execute("match (col)-[r]-(n) where col.name=\"%(name)s\" and n.type=\"cc\" return n"%{'name':name})
+    return [k[0]['name'] for k in z]
+
 
 #find the node here, write the cypher query here to return node where type is property.
 
 if __name__=='__main__':
-    print len(findRelationByName("http://dbpedia.org/resource/Category:Maharashtra", "sb", "http://dbpedia.org/resource/Category:States_and_territories_of_India"))
+    print [k[0]['name'] for k in findCCNodes('River')]

@@ -59,12 +59,10 @@ OPTIONAL{?p rdfs:range ?r}
 }
 """
 query6="""
-SELECT DISTINCT ?s ?p ?o ?d ?r WHERE{
-?p rdfs:label ?l. ?l bif:contains "'%(name1)s'" . FILTER regex(?l,"^%(name1)s$" ,"i") . FILTER
-(langMatches(lang(?l), "en")).
-?s ?p ?o.
+SELECT DISTINCT ?s ?o ?d ?r WHERE{
+?s <%(name1)s> ?o.
 ?s rdf:type ?d. 
-?o rdf:type ?r}
+?o rdf:type ?r
 }
 """
 
@@ -81,13 +79,18 @@ def findProperty(name1, name2):
     query=query1+query4%{'name1':name1, 'name2':name2}
     return runSparql(query,{'s':'value','p':'value','o':'value','d':'value','r':'value'})
 
+def findProperty2(name1, name2):
+    query=query1+query4%{'name1':name1, 'name2':name2}
+    return runSparql2(query,{'s':'value','p':'value','o':'value','d':'value','r':'value'})
+
+
 def findPropertyClassesFirst(name1):
     query=query1+query5%{'name1':name1}
     return runSparql(query,{'s':'value','p':'value','o':'value','d':'value','r':'value'})
 
 def findPropertyClassesSecond(name1):
     query=query1+query6%{'name1':name1}
-    return runSparql(query,{'s':'value','p':'value','o':'value','d':'value','r':'value'})
+    return runSparql2(query,{'s':'value','p':'value','o':'value','d':'value','r':'value'})
     
 
 
@@ -105,9 +108,17 @@ def runSparql(queryAppend,dictionary):
         rlist.append(row)
     return rlist
 
+def runSparql2(queryAppend,dictionary):
+    queryAppend=query1+queryAppend #Add the select statements and etc. from the calling program
+    endpoint.setQuery(queryAppend)
+    endpoint.setReturnFormat(JSON)
+    results=endpoint.query().convert()
+    return results["results"]["bindings"]
+
 
 
 if __name__=='__main__':
-    rlist=findProperty('page','book')
+    rlist=findProperty2('book','page')
     for r in rlist:
-        print r
+        if u'r' in r.keys():
+            print r

@@ -37,7 +37,6 @@ def main():
                 #cache+=[item[column]]
               #  print cache
             item=csvitems[indices[index]]
-            print "column is", column
             k=ccThread(item[column],columnNames,column,support,size)
             k.start()
             k.join()
@@ -54,7 +53,6 @@ def main():
 class ccThread(Thread):
     def __init__(self,item,columnNames,column,support,totalNumberOfValues):
         Thread.__init__(self)
-        print item
         self.item=item
         self.columnNames=columnNames
         self.column=column
@@ -64,7 +62,7 @@ class ccThread(Thread):
 
     def run(self):
         support=self.support
-        totalNumberOfValues=self.totalNumberOfValues
+        totalNumberOfValues=self.totalNumberOfValues*1.0
 
         column=self.column
         columnNames=self.columnNames
@@ -73,15 +71,14 @@ class ccThread(Thread):
 
         print 'size is', len(rlist)
         for r in rlist:
-            print 'column node',Neo4jDrive.findNodeByName(columnNames[column])
             rel_data=Neo4jDrive.insertNodeAndRelationship(columnNames[column],"cc",r[2])       
             node=Neo4jDrive.findNodeByName(r[2])
             if node.properties['incoming']==None:
                 node.properties['incoming']=1
-                node.properties['ccs']=0
+                node.properties['ccs']=1/totalNumberOfValues
             else:
                 node.properties['incoming']+=1
-                node.properties['ccs']=node.properties['incoming']
+                node.properties['ccs']=node.properties['incoming']/totalNumberOfValues
             node.properties['type']='cc'
             node.push()
             
@@ -101,29 +98,44 @@ class dmsThread(Thread):
         self.column=column
 	self.perm_column=perm_column
 
-
-
     def run(self):
-        rlist=sparqlQuerypy.findProperty(self.label1,self.label2)
+        rlist=sparqlQuerypy.findProperty2(self.label1,self.label2)
         print self.label1,self.label2#,rlist
         print '------------------'
         for r in rlist:
-            rel_data=Neo4jDrive.insertNodeAndRelationship(self.columnNames[self.column],"property",r[1])
-            node=Neo4jDrive.findNodeByName(r[1])
-            if node.properties['incoming']==None:
-                node.properties['incoming']=1
-                node.properties['dms']=0
-            else:
-                node.properties['incoming']+=1
-                node.properties['dms']=node.properties['incoming']/self.size*1.0
-            node.properties['type']='property'
-            node.push()
-            #Neo4jDrive.insertNode(self.label1)
-            #Neo4jDrive.insertNode(self.label2)
-            rel=Neo4jDrive.insertRelationship(self.columnNames[self.column],r[1],self.columnNames[self.perm_column])[0]
+            if u'r' in r.keys():
+            #optimize here
+                ccClasses=Neo4jDrive.findCCNodes(self.perm_column)
+                if r['r'] in ccClasses: # range exists
+                    self.addProperty(r['p']['value'])
+                else: # range does not exist
+                    propertyUsage=sparqlQuerypy.findPropertyClassesSecond(r['p']['value'])
+                    print 'Property Usage is', propertyUsage
+                    for item in propertyUsage:
+                        if item['o']['value'] in ccClasses:
+                            print "this is happening"
+                            self.addProperty(item['p']['value'])   
+
+
+
+
+
+    def addProperty(self,p):
+        rel_data=Neo4jDrive.insertNodeAndRelationship(self.columnNames[self.column],"property",p)
+        node=Neo4jDrive.findNodeByName(p)
+        if node.properties['incoming']==None:
+            node.properties['incoming']=1
+            node.properties['dms']=1/(self.size*1.0)
+        else:
+            node.properties['incoming']+=1
+            node.properties['dms']=node.properties['incoming']/(self.size*1.0)
+        node.properties['type']='property'
+        node.push()
+        rel=Neo4jDrive.insertRelationship(self.columnNames[self.column], p, self.columnNames[self.perm_column])[0]
             
-            rel.properties['type']='property_rel'
-            rel.push()
+        rel.properties['type']='property_rel'
+        rel.properties['name']=p
+        rel.push()
 
 class topDownThread(Thread):
     def __init__(self, item1, hyplock, stypelock):
