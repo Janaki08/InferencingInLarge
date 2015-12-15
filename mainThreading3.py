@@ -37,9 +37,16 @@ def main():
                 #cache+=[item[column]]
               #  print cache
             item=csvitems[indices[index]]
-            k=ccThread(item[column],columnNames,column,support,size)
-            k.start()
-            k.join()
+            #k=ccThread(item[column],columnNames,column,support,size)
+            #k.start()
+            #k.join()
+
+    for column in range(sum([1 for _ in Neo4jDrive.findRelationshipsOfNode(nameOfFile,"Column")])):
+        support=CSVRead.getSupport(nameOfFile,column)
+        totalNumberOfValues=CSVRead.numberOfItems(support)
+
+        for index in range(size):
+            item=csvitems[indices[index]]
             for perm_column in range(sum([1 for _ in Neo4jDrive.findRelationshipsOfNode(nameOfFile,"Column")])):
                 if perm_column!=column:
                     k=dmsThread(item[column],item[perm_column],size,columnNames,column,perm_column)
@@ -103,17 +110,31 @@ class dmsThread(Thread):
         print self.label1,self.label2#,rlist
         print '------------------'
         for r in rlist:
-            if u'r' in r.keys():
-            #optimize here
-                ccClasses=Neo4jDrive.findCCNodes(self.perm_column)
-                if r['r'] in ccClasses: # range exists
-                    self.addProperty(r['p']['value'])
-                else: # range does not exist
-                    propertyUsage=sparqlQuerypy.findPropertyClassesSecond(r['p']['value'])
-                    for item in propertyUsage:
-                        if item['o']['value'] in ccClasses:
-                            print "this is happening"
-                            self.addProperty(item['p']['value'])   
+            if u'd' in r.keys():
+                self.addProperty(r['p']['value'])
+                rel_data=Neo4jDrive.insertNodeAndRelationship(self.columnNames[self.column],"property",r['d']['value'])[0]
+                rel_data['name']='property'
+                rel_data.push()
+            else:
+                ccClasses=Neo4jDrive.findCCNodes(self.columnNames[self.perm_column])
+                buildString="("
+                for i in ccClasses:
+                    buildString+='<'+i+'>,'
+                buildString=buildString[:-1]
+                buildString+=")"
+                propertyUsage=sparqlQuerypy.findPropertyClassesSecond(r['p']['value'],buildString)
+                print len(propertyUsage)
+                if len(propertyUsage)<1500:
+                    for k in propertyUsage:
+                        if k['r']['value'] in ccClasses:
+                            self.addProperty(r['p']['value'])
+                            rel_data=Neo4jDrive.insertNodeAndRelationship(self.columnNames[self.column],"property",k['d']['value'])[0]
+                            rel_data['name']="domain"
+
+                            rel_data.push()
+
+
+
 
 
 

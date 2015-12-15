@@ -61,8 +61,16 @@ OPTIONAL{?p rdfs:range ?r}
 query6="""
 SELECT DISTINCT ?s ?o ?d ?r WHERE{
 ?s <%(name1)s> ?o.
+FILTER (?o in %(buildString)s).
 ?s rdf:type ?d. 
 ?o rdf:type ?r
+}
+"""
+
+query7="""
+SELECT DISTINCT ?s WHERE{
+?d <%(name1)s> ?o.
+?d rdf:type ?s
 }
 """
 
@@ -88,9 +96,13 @@ def findPropertyClassesFirst(name1):
     query=query1+query5%{'name1':name1}
     return runSparql(query,{'s':'value','p':'value','o':'value','d':'value','r':'value'})
 
-def findPropertyClassesSecond(name1):
-    query=query1+query6%{'name1':name1}
+def findPropertyClassesSecond(name1,buildString):
+    query=query1+query6%{'name1':name1, 'buildString':buildString}
     return runSparql2(query,{'s':'value','p':'value','o':'value','d':'value','r':'value'})
+
+def findPropertyClassesThird(name1):
+    query=query1+query7%{'name1':name1}
+    return runSparql2(query,{'s':'value'})
     
 
 
