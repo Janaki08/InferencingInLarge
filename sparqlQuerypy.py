@@ -50,7 +50,7 @@ OPTIONAL{?p rdfs:range ?r}
 """
 
 query5="""
-SELECT DISTINCT ?s ?p ?o ?d ?r WHERE{
+SELECT DISTINCT ?d ?p ?r WHERE{
 ?p rdfs:label ?l. ?l bif:contains "'%(name1)s'" . FILTER regex(?l,"^%(name1)s$" ,"i") . FILTER
 (langMatches(lang(?l), "en")).
 ?s ?p ?o.
@@ -59,16 +59,16 @@ OPTIONAL{?p rdfs:range ?r}
 }
 """
 query6="""
-SELECT DISTINCT ?s ?o ?d ?r WHERE{
+SELECT DISTINCT ?s ?d ?r WHERE{
 ?s <%(name1)s> ?o.
-FILTER (?o in %(buildString)s).
+FILTER (?r in %(buildString)s).
 ?s rdf:type ?d. 
 ?o rdf:type ?r
 }
 """
 
 query7="""
-SELECT DISTINCT ?s WHERE{
+SELECT DISTINCT ?s ?e WHERE{
 ?d <%(name1)s> ?o.
 ?d rdf:type ?s
 }
@@ -94,7 +94,7 @@ def findProperty2(name1, name2):
 
 def findPropertyClassesFirst(name1):
     query=query1+query5%{'name1':name1}
-    return runSparql(query,{'s':'value','p':'value','o':'value','d':'value','r':'value'})
+    return runSparql2(query,{'p':'value','d':'value','r':'value'})
 
 def findPropertyClassesSecond(name1,buildString):
     query=query1+query6%{'name1':name1, 'buildString':buildString}

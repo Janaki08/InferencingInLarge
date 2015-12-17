@@ -33,8 +33,11 @@ def findCCNodes(name):
     z=graph.cypher.execute("match (col)-[r]-(n) where col.name=\"%(name)s\" and n.type=\"cc\" return n"%{'name':name})
     return [k[0]['name'] for k in z]
 
+def findAllCCNodes():
+    z=graph.cypher.execute("match (n) where n.type=\"cc\" return n")
+    return [k[0]['name'] for k in z]
 
 #find the node here, write the cypher query here to return node where type is property.
 
 if __name__=='__main__':
-    print [k[0]['name'] for k in findCCNodes('River')]
+    print insertNodeAndRelationship('River','a','b')
