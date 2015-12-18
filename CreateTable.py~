@@ -18,7 +18,7 @@ with open('../csv/eggs%s.csv'%number,'wb') as csvfile:
             r=[]
             domain=record[0]
             csv=math.sqrt((ccs*ccs)+(dms*dms))
-            table=Neo4jDrive.tableMembership(domain)
+            table=Neo4jDrive.tableMembership()
             entropy=-(ccs)/(ccs+dms)*math.log(ccs/(ccs+dms))-(dms)/(ccs+dms)*math.log(dms/(ccs+dms))
             overall=csv*entropy*table
             r.append(domain)    

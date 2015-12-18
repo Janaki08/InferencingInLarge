@@ -37,6 +37,10 @@ def findAllCCNodes():
     z=graph.cypher.execute("match (n) where n.type=\"cc\" return n")
     return [k[0]['name'] for k in z]
 
+def tableMembership(name):
+    z=graph.cypher.execute("MATCH (f)-[]->(n)-[r]->(b)-[k]-(c)-[d]-(m) where f.type='table' and  k.name='property' and d.name='domain' and m.name=\"%(name)s\" return distinct f, m"%{'name':name})
+    return len(z)
+
 #find the node here, write the cypher query here to return node where type is property.
 
 if __name__=='__main__':

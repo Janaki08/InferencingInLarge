@@ -38,4 +38,4 @@ def numberOfItems(dictionary):
 
 if __name__=='__main__':
     nameOfFile="RiversandSourceState.csv"
-    print readCSV(nameOfFile)
+    print readCSV(nameOfFile,firstRow=False, choice=[0,1])
