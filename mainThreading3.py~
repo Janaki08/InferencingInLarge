@@ -15,25 +15,28 @@ stype=[]
 
 def main():
     tables=["StatesandCapitals.csv","RiversandSourceState.csv"]
+    
+
     for i in tables:
         run(i)
 
 def run(nameOfFile):
-    cache=[]
     Neo4jDrive.insertNode(nameOfFile)
     node=Neo4jDrive.findNodeByName(nameOfFile)
     node.properties['type']='table'
     node.push()
     columnNames=CSVRead.readCSV(nameOfFile,firstRow=True, choice=[0,1])
     columnNames=[c.strip() for c in columnNames]
-    csvitems=[]
+   
     csvitems=CSVRead.readCSV(nameOfFile,firstRow=False, choice=[0,1])
-    csvitems=csvitems[1:len(csvitems)/2]
+    csvitems=csvitems[1:]
     print csvitems
+    print '-------------'
     size=len(csvitems)
+    print 'size is', size
     indices=range(1,size)
     random.shuffle(indices)
-
+    """
     hyplock=Lock()
     stypelock=Lock()
     for name in columnNames:
@@ -49,8 +52,8 @@ def run(nameOfFile):
         for index in range(size-1):
             item=csvitems[indices[index]]
             k=ccThread(item[column],columnNames,column,support,size)
-            k.start()
-            k.join()
+            #k.start()
+            #k.join()
 
     for column in range(len(columnNames)):
         support=CSVRead.getSupport(nameOfFile,column)
@@ -61,13 +64,13 @@ def run(nameOfFile):
             for perm_column in range(len(columnNames)):
                 if perm_column!=column:
                     k=dmsThread(item[column],item[perm_column],size,columnNames,column,perm_column)
-                    k.start()
-                    k.join()
+                    #k.start()
+                    #k.join()
         allCC=set(Neo4jDrive.findAllCCNodes())
-        k=topDownThread(columnNames[column],hyplock,stypelock,allCC)
-        k.start()
-        k.join()
-
+        #k=topDownThread(columnNames[column],hyplock,stypelock,allCC)
+        #k.start()
+        #k.join()
+       """
 def deduplicate(csvitems):
     for i in range(len(csvitems)):
         for j in range(i,len(csvitems)):
@@ -99,7 +102,7 @@ class ccThread(Thread):
         rlist=sparqlQuerypy.findBottomUp(item.strip())
 
         print 'number of nodes for', item.strip(), " is ", len(rlist)
-        log.write('number of nodes for'+str( item.strip()), " is ", str(len(rlist)))
+        log.write('number of nodes for'+str( item.strip())+ " is "+ str(len(rlist))+'\n')
         for r in rlist:
             rel_data=Neo4jDrive.insertNodeAndRelationship(columnNames[column],"cc",r[2])       
             node=Neo4jDrive.findNodeByName(r[2])
@@ -131,8 +134,8 @@ class dmsThread(Thread):
     def run(self):
         rlist=sparqlQuerypy.findProperty2(self.label1,self.label2)
         print '------------------'
-        log.write('----------------')
-        log.write(str(datetime.datetime.now()))
+        log.write('----------------\n')
+        log.write(str(datetime.datetime.now())+'\n')
         log.write(self.label1+self.label2)
         print self.label1,self.label2#,rlist
         
