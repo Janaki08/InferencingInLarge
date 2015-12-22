@@ -12,74 +12,95 @@ log.write("\n")
 
 hypothesisSet=set()
 stype=[]
-
+sample=5
+data=[]
+csvitems=[]
 def main():
+    csvitems=[]
+    data=[]
     tables=["StatesandCapitals.csv","RiversandSourceState.csv"]
-    
+    size=[]
 
-    for i in tables:
-        run(i)
+    for nameOfFile in tables:
+        Neo4jDrive.insertNode(nameOfFile)
+        node=Neo4jDrive.findNodeByName(nameOfFile)
+        node.properties['type']='table'
+        node.push()
+        csvitems+=[CSVRead.readCSV(nameOfFile,firstRow=False, choice=[0,1])[1:]]
+        size+=[len(csvitems)]
+        random.shuffle(csvitems[-1])
+    i=k=0          
+    while len(csvitems)>0:
+        
+        for l,item in enumerate(csvitems):
+            
+            end=k+sample
+            s=sample
+            if k+sample>len(item):
+                s=sample-(end-len(item))
+                end=len(item)
+            data[i:i+s]=[[it,l] for it in item[k:end]]
+            i+=s
+            if k+sample>len(item):
+               csvitems.remove(item)
+        k+=sample
+    run(data,tables,size)
 
-def run(nameOfFile):
-    Neo4jDrive.insertNode(nameOfFile)
-    node=Neo4jDrive.findNodeByName(nameOfFile)
-    node.properties['type']='table'
-    node.push()
-    columnNames=CSVRead.readCSV(nameOfFile,firstRow=True, choice=[0,1])
-    columnNames=[c.strip() for c in columnNames]
+
+def run(data,tables,size):
+    support=[[]]
+    columnNames=[]
+    for i,nameOfFile in enumerate(tables):
+        print i
+        columnNames+=[CSVRead.readCSV(nameOfFile,firstRow=True, choice=[0,1])]
+        columnNames[i]=[c.strip() for c in columnNames[i]]
+        print 'this is',columnNames[i]
+        for j,name in enumerate(columnNames[i]):
+            z=Neo4jDrive.insertNodeAndRelationship(nameOfFile,"Column",name)[0]
+            z.properties['type']="Column"
+            z.push()
+            print len(support),i
+            support[i]+=[CSVRead.getSupport(nameOfFile,j)]
+        support+=[[]]
+    support=support[:-1]
    
-    csvitems=CSVRead.readCSV(nameOfFile,firstRow=False, choice=[0,1])
-    csvitems=csvitems[1:]
-    print csvitems
-    print '-------------'
-    size=len(csvitems)
-    print 'size is', size
-    indices=range(1,size)
-    random.shuffle(indices)
+    totalNumberOfValues=[[CSVRead.numberOfItems(s) for s in ss] for ss in support]
+   
     
     hyplock=Lock()
     stypelock=Lock()
-    for name in columnNames:
-        z=Neo4jDrive.insertNodeAndRelationship(nameOfFile,"Column",name)[0]
-        z.properties['type']="Column"
     
-
-    for column in range(len(columnNames)):
-        support=CSVRead.getSupport(nameOfFile,column)
-        totalNumberOfValues=CSVRead.numberOfItems(support)
+    for itemPiece in data:
+        indexOfFile=itemPiece[1]
+        item=itemPiece[0]
+        for column in range(len(columnNames[indexOfFile])):
+        #support=CSVRead.getSupport(nameOfFile,column)
+        #totalNumberOfValues=CSVRead.numberOfItems(support)
         
-        count=0
-        for index in range(size-1):
-            item=csvitems[indices[index]]
-            k=ccThread(item[column],columnNames,column,support,size)
+            k=ccThread(item[column],columnNames[indexOfFile],column,support[indexOfFile],size)
             #k.start()
             #k.join()
+    for itemPiece in data:
+        indexOfFile=itemPiece[1]
+        item=itemPiece[0]
+        for column in range(len(columnNames[indexOfFile])):
+           #support=CSVRead.getSupport(nameOfFile,column)
+           #totalNumberOfValues=CSVRead.numberOfItems(support)
 
-    for column in range(len(columnNames)):
-        support=CSVRead.getSupport(nameOfFile,column)
-        totalNumberOfValues=CSVRead.numberOfItems(support)
-
-        for index in range(size-1):
-            item=csvitems[indices[index]]
-            for perm_column in range(len(columnNames)):
+            for perm_column in range(len(columnNames[indexOfFile])):
                 if perm_column!=column:
-                    k=dmsThread(item[column],item[perm_column],size,columnNames,column,perm_column)
-                    #k.start()
-                    #k.join()
-        allCC=set(Neo4jDrive.findAllCCNodes())
-        #k=topDownThread(columnNames[column],hyplock,stypelock,allCC)
-        #k.start()
-        #k.join()
+                    k=dmsThread(item[column],item[perm_column],size[indexOfFile],columnNames[indexOfFile],column,perm_column)
+                    k.start()
+                    k.join()
+        
+        
+    allCC=set(Neo4jDrive.findAllCCNodes())
+    for c in columnNames:
+        for column in c:
+            k=topDownThread(column,hyplock,stypelock,allCC)
+            k.start()
+            k.join()
        
-def deduplicate(csvitems):
-    for i in range(len(csvitems)):
-        for j in range(i,len(csvitems)):
-            if csvitems[i]==csvitems[j]:
-                csvitems[j]==[]
-    for i in csvitems:
-        if len(i)==0:
-            del i
-    return csvitems
                 
     
 class ccThread(Thread):
@@ -198,9 +219,13 @@ class dmsThread(Thread):
         node.properties['type']='property'
         node.push()
         rel=Neo4jDrive.insertRelationship(self.columnNames[self.column], p, self.columnNames[self.perm_column])[0]
-            
-        rel.properties['type']='property_rel'
-        rel.properties['name']=p
+        if rel.properties['propCount']==None:    
+            rel.properties['type']='property_rel'
+            rel.properties['name']=p
+            rel.properties['dms']=1
+        else:
+            rel.properties['dms']+=1
+                
         rel.push()
 
 class topDownThread(Thread):
@@ -248,7 +273,26 @@ class topDownThread(Thread):
                         
                         
 
-                
+    def levenshtein(s1, s2):
+        if len(s1) < len(s2):
+            return levenshtein(s2, s1)
+
+    # len(s1) >= len(s2)
+        if len(s2) == 0:
+            return len(s1)
+
+        previous_row = range(len(s2) + 1)
+        for i, c1 in enumerate(s1):
+            current_row = [i + 1]
+            for j, c2 in enumerate(s2):
+                insertions = previous_row[j + 1] + 1 # j+1 instead of j since previous_row and current_row are one character longer
+                deletions = current_row[j] + 1       # than s2
+                substitutions = previous_row[j] + (c1 != c2)
+                current_row.append(min(insertions, deletions, substitutions))
+            previous_row = current_row
+    
+        return previous_row[-1]
+
                 
 
     def addProperty(self,p):
@@ -267,6 +311,7 @@ class topDownThread(Thread):
         rel=Neo4jDrive.insertRelationship(self.columnNames[self.column], p, self.columnNames[self.perm_column])[0]
             
         rel.properties['type']='property_rel'
+        rel.properties['lms']=levenshtein(p,self.columnNames[self.column])
         rel.properties['name']=p
         rel.push()
 
