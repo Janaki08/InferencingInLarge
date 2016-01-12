@@ -16,6 +16,9 @@ def insertNodeAndRelationship(nameOfNode2,Rel_type,nameOfNode1):
     
 
 def insertRelationship(a,nameOfRelation,b):
+    k=graph.cypher.execute("match (m)-[n]-(o) where m.name='%(a)s' and n.name='%(nameOfRelation)s' and o.name='%(b)s' return n"%{'a':a, 'nameOfRelation':nameOfRelation, 'b':b})
+    if len(k)!=0:
+        return k
     return graph.create_unique(Relationship(findNodeByName(a),nameOfRelation,findNodeByName(b)))
 
 def findNodeByName(name):
@@ -29,6 +32,9 @@ def findRelationshipsOfNode(name,Rel_type):
 def findRelationByName(node1, name, node2):
     return graph.cypher.execute("match (m)-[n]-(o) where m.name=\"%(m)s\" and o.name=\"%(o)s\" and n.rel_class=\"%(name)s\" return m,n,o"%{'m':node1,'o':node2,'name':name})
 
+def findPropertyLink(node1, name, node2):
+    return graph.cypher.execute("match (m)-[n]-(o) where m.name=\"%(m)s\" and o.name=\"%(o)s\" and n.name=\"%(name)s\" return m,n,o"%{'m':node1,'o':node2,'name':name})
+
 def findCCNodes(name):
     z=graph.cypher.execute("match (col)-[r]-(n) where col.name=\"%(name)s\" and n.type=\"cc\" return n"%{'name':name})
     return [k[0]['name'] for k in z]
@@ -38,10 +44,26 @@ def findAllCCNodes():
     return [k[0]['name'] for k in z]
 
 def tableMembership(name):
-    z=graph.cypher.execute("MATCH (f)-[]->(n)-[r]->(b)-[k]-(c)-[d]-(m) where (f.name='RiversandSourceState.csv' or f.name='StatesandCapitals.csv') and  k.name='property' and d.name='domain' and m.name=\"%(name)s\" return distinct f, m"%{'name':name})
+    z=graph.cypher.execute("MATCH (n)-[r]->(b)-[k]->(c)-[d]->(m) where  d.name='domain' and n.type='table' and c.type='property' and m.name=\"%(name)s\" return distinct n.name"%{'name':name})
     return len(z)
+
+def findCCScore(node):
+    z=graph.cypher.execute("Match (n)-[r]->(c) where n.name=\"%(name)s\" return count(r)"%{'name':node})
+    return 
+
+def findNumberOfColumns(name):
+    z=graph.cypher.execute("Match (n)-[r]->(m)-[t]->(o) where n.type='Column' and m.type='property' and o.hyp='yes' and o.name=\"%(name)s\" return count(distinct n)"%{'name':name})
+    return z
+def findTotalNumberOfColumns():
+    z=graph.cypher.execute("Match (n) where n.type='Column' return count(n)")
+    return z
+
+def findIncomingCCLinks(name):
+    z=graph.cypher.execute("Match (n)-[r]->(m) where r.rel_class='cc' and m.name=\"%(name)s\" return r"%{'name':name})
+    return z
 
 #find the node here, write the cypher query here to return node where type is property.
 
 if __name__=='__main__':
-    print insertNodeAndRelationship('River','a','b')
+    for k in findIncomingCCLinks("http://dbpedia.org/class/yago/StatesAndTerritoriesOfIndia"):
+        print k[0].properties['ccs']

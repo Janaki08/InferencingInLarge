@@ -12,22 +12,25 @@ with open('../csv/eggs%s.csv'%number,'wb') as csvfile:
     writer.writerow(['Domain Class','CCS Score','DCS Score', 'Table','Overall Score'])
     theTable=[]
     domains={}
+    numberOfColumns=Neo4jDrive.findTotalNumberOfColumns()[0][0]
     for record in graph.cypher.execute("MATCH (n) where n.hyp='yes' return n.name, n.ccs, n.DCS"):
+        domain=record[0]        
         ccs=record[1]
-        dms=record[2]
-        if ccs!=None and dms!=None and ccs!=0 and dms!=0: 
-            r=[]
-            domain=record[0]
-            csvs=math.sqrt((ccs*ccs)+(dms*dms))
-            table=Neo4jDrive.tableMembership(domain)
-            entropy=-(ccs)/(ccs+dms)*math.log(ccs/(ccs+dms))-(dms)/(ccs+dms)*math.log(dms/(ccs+dms))
+        dcs=(Neo4jDrive.findNumberOfColumns(domain)[0][0]*1.0)/numberOfColumns
+        r=[]
+        table=Neo4jDrive.tableMembership(domain)
+        if ccs!=None and dcs!=None and ccs!=0 and dcs!=0:  
+            csvs=math.sqrt((ccs*ccs)+(dcs*dcs))
+            entropy=-(ccs)/(ccs+dcs)*math.log(ccs/(ccs+dcs))-(dcs)/(ccs+dcs)*math.log(dcs/(ccs+dcs))
             overall=csvs*entropy*table
-            domains[domain]=overall
-            r.append(domain)    
-            r.append(ccs)
-            r.append(dms)
-            r.append(table) 
-            r.append(overall)
+        else:
+            overall='-'
+        domains[domain]=overall
+        r.append(domain)    
+        r.append(ccs)
+        r.append(dcs)
+        r.append(table) 
+        r.append(overall)
         theTable+=[r]
     theTable=sorted(theTable, key=lambda x: x[4],reverse=True)
 
@@ -39,19 +42,22 @@ with open('../csv/eggs%s.csv'%number,'wb') as csvfile:
     writer=csv.writer(csvfile, delimiter=',',quotechar='{')
     writer.writerow(['Domain Class','Overall Score','Property', 'DMS','LMS','Source Column','Column'])
     
-    for record in graph.cypher.execute("MATCH (n)-[r]-(m) where n.type='property' and m.hyp='yes' and r.type='domain' return n.name, m.name"):
-        domain=record[1]
-        prop=record[0]
-        for rec in graph.cypher.execute("MATCH (n)-[r]-(m) where r.name=\"%(prop)s\" and r.type='property_rel' return r.dms, r.lms, n.name, m.name"):
+    for record in graph.cypher.execute("MATCH (n)-[r1]->(m)-[r2]->(o) where n.type='Column' and m.type='property' and o.hyp='yes' return n.name,r1.dms,r1.lms, m.name,o.name"):
+        domain=record[4]
+        prop=record[3]
+        dms=record[1]
+        lms=record[2]
+        for rec in graph.cypher.execute("MATCH (n)-[r]->(m) where r.name=\"%(prop)s\" and r.type='property_rel' return n.name, m.name"%{'prop':prop}):
             r=[]
-            
+            source=rec[0]
+            dest=rec[1]
             r.append(domain)    
             r.append(domains[domain])
             r.append(prop)
-            r.append(rec[0]) 
-            r.append(rec[1])
-            r.append(rec[2])
-            r.append(rec[3])
+            r.append(dms) 
+            r.append(lms)
+            r.append(source)
+            r.append(dest)
         theTable+=[r]
     theTable=sorted(theTable, key=lambda x: x[0],reverse=True)
 

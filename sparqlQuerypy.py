@@ -28,24 +28,28 @@ SELECT DISTINCT ?c ?b ?a WHERE {
 
 """
 
-query3="""
-SELECT DISTINCT ?s ?l ?d WHERE{
-?s ?p ?o.
-?s rdfs:label ?l. ?l bif:contains "'%(name)s'". FILTER regex(?l,"^%(name)s$" ,"i") . FILTER (langMatches(lang(?l), "en")).
-?s rdf:type ?d
+
+
+
+query3="""  
+SELECT DISTINCT ?d WHERE{
+
+?s rdfs:label ?l. ?l bif:contains "'^%(name)s$'". FILTER regex(?l,"^%(name)s$" ,"i") . FILTER (langMatches(lang(?l), "en")).
+?s a ?d
 }
 
 """
 
 query4="""
-SELECT DISTINCT ?s ?p ?o ?d ?r WHERE{
-?s rdfs:label ?l. ?l bif:contains "'%(name1)s'" . FILTER regex(?l,"%(name1)s" ,"i") . FILTER
-(langMatches(lang(?l), "en")).
-?o rdfs:label ?l1. ?l1 bif:contains "'%(name2)s'" . FILTER regex(?l1,"%(name2)s" ,"i") . FILTER
-(langMatches(lang(?l1), "en")).
+ SELECT DISTINCT ?p ?r ?d WHERE {
 ?s ?p ?o.
+{?s a ?r}.
 OPTIONAL{?p rdfs:domain ?d}.
-OPTIONAL{?p rdfs:range ?r}
+{{?s rdfs:label ?l. ?l bif:contains '"%(name1)s"' . FILTER regex(?l,'^%(name1)s$' ,"i"). FILTER (langMatches(lang(?l), "en"))} UNION
+{?s dbp:name ?n. ?n bif:contains '"%(name1)s"' . FILTER regex(?n,'^%(name1)s$' ,"i"). FILTER (langMatches(lang(?n), "en"))}} .
+{{?o rdfs:label ?l1. ?l1 bif:contains '"%(name2)s"' . FILTER regex(?l1,'^%(name2)s$' ,"i"). FILTER (langMatches(lang(?l1), "en"))} UNION
+{?o dbp:name ?n1. ?n1 bif:contains '"%(name2)s"' . FILTER regex(?n1,'^%(name2)s$' ,"i"). FILTER (langMatches(lang(?n1), "en"))}}.
+
 }
 """
 
@@ -68,12 +72,43 @@ FILTER (?r in %(buildString)s).
 """
 
 query7="""
-SELECT DISTINCT ?s ?e WHERE{
-?d <%(name1)s> ?o.
-?d rdf:type ?s
+ select distinct ?s where {
+
+{{?s a ?p}. FILTER(?p IN (owl:DatatypeProperty, owl:ObjectProperty, rdf:Property)).
+
+{{?s rdfs:comment ?l. ?l bif:contains "%(name1)s". FILTER regex(?l , "\\b%(name1)s\\b" , "i")} UNION {?s rdfs:label ?l. ?l bif:contains "%(name1)s". FILTER regex(?l , "\\b%(name1)s\\b" , "i")}}.
+
+FILTER regex(?s ,"number", "i")}
+"""
+
+query8="""
+select distinct ?r where {
+<%(name)s> a ?r
+}
+"""
+query9="""
+select distinct ?r where {
+<%(name)s> rdfs:range ?r
 }
 """
 
+query10="""
+select distinct ?t where {
+?s <%(name)s> ?o.
+?o a ?t
+}
+"""
+query11="""
+select distinct ?d where {
+<%(name)s> rdfs:domain ?d
+}
+"""
+query12="""
+select distinct ?t where {
+?s <%(name)s> ?o.
+?s a ?t
+}
+"""
 
 def findClass(name):
     query=query1+query2%{'name':name}
@@ -103,7 +138,26 @@ def findPropertyClassesSecond(name1,buildString):
 def findPropertyClassesThird(name1):
     query=query1+query7%{'name1':name1}
     return runSparql2(query,{'s':'value'})
+
+def findType(name):
+    query=query1+query8%{'name':name}
+    return runSparql2(query,{'r':'value'})
+
+def findRange(name):
+    query=query1+query9%{'name':name}
+    return runSparql2(query,{'r':'value'})
+
+def findDomain(name):
+    query=query1+query11%{'name':name}
+    return runSparql2(query,{'d':'value'})
+
+def findTypeOfObject(name):
+    query=query1+query10%{'name':name}
+    return runSparql2(query,{'t':'value'})
     
+def findTypeOfSubject(name):
+    query=query1+query12%{'name':name}
+    return runSparql2(query,{'t':'value'})
 
 
 def runSparql(queryAppend,dictionary):

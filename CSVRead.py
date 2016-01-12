@@ -37,6 +37,13 @@ def getSupport(nameOfFile,column):
     del resultCount[result[0][0]]
     return resultCount
 
+def getSize(nameOfFile,column):
+    result=readCSV(nameOfFile,choice=[column])
+    su=0
+    for r in result:
+        su+=1
+    return su
+
 def numberOfItems(dictionary):
     return sum(dictionary.values())
     
